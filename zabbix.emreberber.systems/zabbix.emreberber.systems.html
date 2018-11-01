@@ -1,0 +1,59 @@
+<p>Bir <a href="https://emreberber.systems/zabbix-ile-server-monitoring/">önceki</a> blog yazımda Zabbix'e giriş yapıp, kurulumundan bahsetmiştim.Bu yazımda ise Zabbix arayüzüne http://IP/zabbix yerine https://zabbix.emreberber.systems olacak şekilde giriş yapabilmeyi anlatmaya çalışacağım.</p><p>Anlatacaklarımı üç parça olacak şekilde ayırdım.Bunlar,<br><strong>1)</strong> Tarayıcıda http://IP/zabbix yerine https://IP olacak şekilde girebilme<br><strong>2)</strong> http://IP<strong> </strong>yerine zabbix.emreberber.systems alan adı ile girebilme<br><strong>3) </strong>Son olarak bu alan adı için SSL kurulumu</p><figure class="kg-card kg-image-card"><img src="/content/images/2018/10/monitoring-1.jpg" class="kg-image"></figure><pre><code class="language-bash">sudo vim /etc/apache2/sites-available/000-default.conf
+</code></pre>
+<p>Açılan dosyada <strong>/var/www/html</strong> olan kısmı <strong>/usr/share/zabbix</strong> olacak şekilde değiştiriyoruz.</p><pre><code class="language-wiki">...
+
+ServerAdmin webmaster@localhost
+DocumentRoot /usr/share/zabbix
+
+...
+</code></pre>
+<p>default-ssl.conf dosyasında ise <strong>ServerName</strong> için birazdan aktif hale getireceğim alan adını giriyorum.</p><pre><code class="language-bash">sudo vim /etc/apache2/sites-available/default-ssl.conf
+</code></pre>
+<pre><code class="language-wiki">&lt;IfModule mod_ssl.c&gt;
+        &lt;VirtualHost _default_:443&gt;
+                ServerAdmin webmaster@localhost
+                ServerName zabbix.emreberber.systems
+                DocumentRoot /usr/share/zabbix
+
+...
+</code></pre>
+<p>Apache'yi restart ettikten sonra tarayıcıda http:://IP/ yazarak Zabbix Arayüzüne erişebiliriz.Şimdi sırada emreberber.systems domainimize zabbix subdomaini eklemede.</p><pre><code class="language-bash">sudo service apache2 restart
+sudo service apache2 status
+sudo service zabbix-server restart
+sudo service zabbix-server status
+</code></pre>
+<p><strong>DNS Subdomain Ekleme (Bind)</strong></p><p>Daha önceden DNS ile ilgli bir <a href="https://emreberber.systems/digital-ocean-ve-google-cloud-ile-authoritative-only-bind-dns/">blog</a> yazmıştım.O blogdan bu yana değişen tek şey domain adım ve zone dosyalarındaki serial oldu.Aslında subdomain işleminin fazla bir esprisi de yok.www kaydı da aslında bir subdomaindir ve zabbix için de aynı mantığı kullanabiliriz.Burada değişen tek şey IP Adresi olarak Zabbix'in kurulu olduğu sunucunun IP Adresinin girilecek olmasıdır.</p><pre><code class="language-bash">sudo vim /etc/bind/zones/db.emreberber.systems
+</code></pre>
+<pre><code class="language-wiki">...
+; Other A records
+@               IN      A       35.234.125.178
+www             IN      A       35.234.125.178
+zabbix          IN      A       35.241.203.39
+...
+</code></pre>
+<pre><code class="language-bash">sudo vim /etc/bind/zones/db.165.227.137 
+</code></pre>
+<pre><code class="language-wiki">...
+; PTR records
+94      IN      PTR     ns1.emreberber.systems.
+151     IN      PTR     ns2.emreberber.systems.
+178     IN      PTR     www.emreberber.systems.
+39      IN      PTR     zabbix.emreberber.systems.
+...
+</code></pre>
+<p>Bu arada, bu değişiklikleri yaptıktan sonra <strong>Serial</strong> değerini güncellemeyi ihmal etmiyoruz.Aksi halde yaptığımız değişiklikleri Slave DNS Server'da göremeyiz.</p><pre><code class="language-bash">sudo service bind9 restart
+sudo service bind9 status
+</code></pre>
+<p>DNS tarafını da bu şekilde tamamlamış olduk.Şuanda tarayıcıda zabbix.emreberber.systems adresini girdiğimde istediğim sayfaya yönlendiriliyorum.Son olarak da güvenliği ihtmal etmiyoruz ve SSL kurulumuna geçiyoruz.</p><p><strong>Apache SSL Kurulumu</strong></p><p>SSL tarafında Let's Encrypt kullanmayı tercih ediyorum.</p><figure class="kg-card kg-image-card"><img src="/content/images/2018/10/htaccess-redirect-http-to-https-with-or-without-www-2.png" class="kg-image"></figure><pre><code class="language-bash">sudo add-apt-repository ppa:certbot/certbot
+sudo apt-get update
+sudo apt-get install python-certbot-apache
+sudo certbot --apache -d zabbix.emreberber.systems
+sudo certbot renew --dry-run
+</code></pre>
+<p>SSL sertifikasının süresi bitmeden önce hatırlatma maili gönderiyor.<strong>renew</strong> komutu ile bu süreyi otomatik olarak uzatmış oluyoruz.</p><pre><code class="language-bash">sudo service apache2 restart
+sudo service apache2 status
+</code></pre>
+<p>Bu işlemlerin ardından https://zabbix.emreberber.systems adresinden Zabbix Arayüzüne erişebilmekteyim.</p><figure class="kg-card kg-image-card"><img src="/content/images/2018/10/Screenshot-from-2018-10-22-12-46-23.png" class="kg-image"></figure><p>[1] <a href="https://www.digitalocean.com/community/tutorials/how-to-create-a-ssl-certificate-on-apache-for-ubuntu-12-04#status-deprecated">How To Create a SSL Certificate on Apache for Ubuntu 12.04</a><br>[2] <a href="https://www.zabbix.com/forum/zabbix-help/28949-change-the-apache-path-to-zabbix">Change the apache path to /zabbix</a></p>
+
+
+// 23 October 2018  Zabbix, Subdomain, SSL

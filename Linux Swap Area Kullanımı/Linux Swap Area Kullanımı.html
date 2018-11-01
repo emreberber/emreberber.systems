@@ -1,0 +1,63 @@
+<p>Zabbix ile ilgili yazdığım ilk <a href="https://emreberber.systems/zabbix-ile-server-monitoring/">blog</a> yazısında kendi arayüzümden birkaç tane ekran görüntüsünü paylaşmıştım.Belki farkedenler olmuştur, problems sekmesinde yer alan dört tane uyarı mesajını.Bu sorunu ortadan kaldırırken buradan da bi blog yazısı çıkarırım dedim ve şuanda eş zamanlı olarak hem bu blogu yazıyor hem de sunucular için Swap Area oluşturuyorum.</p><figure class="kg-card kg-image-card"><img src="/content/images/2018/10/Screenshot-from-2018-10-15-00-54-58-1.png" class="kg-image"></figure><p><strong>Swap Area Nedir ?</strong><br>Türkçesi Takas Alanı, Sistemin RAM kullanımının belli seviyeye ulaştığında disk üzerinde kendisine ayırılan alanı sanal bellek olarak kullanması.Bu alana sadece RAM'in tamamı dolunca geçilmiyor.Bu yüzden 'belirli bir seviyeye ulaştığında' diyebildim.Bunu da pratikte nasıl uygulandığını birazdan görürürüz sanırım.Bilgisayarınızda RAM kullanımı yüzde kaça ulaştığında swap alanının kullanımına geçildiğini öğrenmek isterseniz de,</p><pre><code class="language-bash">cat /proc/sys/vm/swappiness
+</code></pre>
+<p><strong>Dezavantajı ?</strong><br>Elbette var.Bilgisayarımda var 4 GB Ram, ben buna 100GB Swap Area oluşturayım oldu sana 104 GB RAM gibi bir durum söz konusu değil.Malesef diskin okuma/yazma hızı RAM'e göre çok daha yavaş.</p><p><strong>Boyutu Ne Olmalı ?</strong><br>Ortada çok fazla değişken var.Bunlardan birkaç tanesi işletim sistemi veya dağıtım, RAM ve Disk kapasitesi şeklinde.Bazı dökümanlarda şu kadar RAM varsa, şu kadar swap alanı oluşturulmalı gibi ifadeler kullanılmış.Digital Ocean <a href="https://www.digitalocean.com/community/tutorials/how-to-add-swap-space-on-ubuntu-16-04">dökümanında</a> da 'SSD'li sistemlerde takas kullanmak, zamanla donanımın bozulmasına neden olabilir' gibi bir ifade kullanmış.Hatta forumlarda swap alanının gerçekten de gerekli mi olduğu tartışılmakta.</p><hr><h2 id="swap-area-olu-turma-ad-mlar-">Swap Area Oluşturma Adımları</h2><p>Başıma bir şey gelmeyecekse ilk önce emreberber.systems alan adıma ait olan Slave DNS Server'da bu işlemi gerçekleştireceğim.Bu sunucuda 0.6GB RAM ve 10GB depolama alanı mevcut.(SSD değil)<br>Zabbix her ne kadar bize swap alanımızın olmadığını belirtse de biz bunu terminal vasıtasıyla teyit edelim.</p><pre><code class="language-bash">free -m
+</code></pre>
+<pre><code class="language-wiki">              total        used        free      shared  buff/cache   available
+Mem:            581         139          69           6         372         305
+Swap:             0           0           0
+
+</code></pre>
+<p>Disk ile ilgili bilgilerimiz için de,</p><pre><code class="language-bash">df -h
+</code></pre>
+<pre><code class="language-wiki">Filesystem      Size  Used Avail Use% Mounted on
+udev            280M     0  280M   0% /dev
+tmpfs            59M  6.5M   52M  12% /run
+/dev/sda1       9.7G  2.7G  7.0G  28% /
+tmpfs           291M     0  291M   0% /dev/shm
+tmpfs           5.0M     0  5.0M   0% /run/lock
+tmpfs           291M     0  291M   0% /sys/fs/cgroup
+tmpfs            59M     0   59M   0% /run/user/1002
+</code></pre>
+<p>Zabbix Arayüzünden bu bilgilere ait grafikleri görüntüleyebiliriz.</p><figure class="kg-card kg-image-card"><img src="/content/images/2018/10/Screenshot-from-2018-10-26-19-48-50.png" class="kg-image"></figure><p>Şimdi ise swap alanı boyutunun ne kadar olması gerektiğini düşünmeliyim.Son eklediğim Zabbix grafiğinden şunu çıkarıyorum, bu sistem hiç bir zaman 350 MB RAM bile tüketmemiş(max 319.56 tüketmiş).Sunucu, DNS sunucusu olduğundan sakata gelmek de istemiyoruz.Sonuç olarak bu sistem için 640 MB swap alanı oluşturmayı yeterli buldum.</p><pre><code class="language-bash">sudo fallocate -l 640MB /swapfile
+ls -lh /swapfile
+</code></pre>
+<pre><code class="language-wiki">-rw-r--r-- 1 root root 611M Oct 26 17:11 /swapfile
+</code></pre>
+<p>İzinleri sadece root kullanıcısının read ve write yapabileceği şekilde değiştirmemiz gerekiyor.</p><pre><code class="language-bash">sudo chmod 600 /swapfile
+ls -lh /swapfile
+</code></pre>
+<pre><code class="language-wiki">-rw------- 1 root root 611M Oct 26 17:11 /swapfile
+</code></pre>
+<p>Şimdi sisteme bu dosyanın swap alanı için kullanılacağını söyeleyim.</p><pre><code class="language-bash">sudo mkswap /swapfile
+</code></pre>
+<pre><code class="language-wiki">Setting up swapspace version 1, size = 610.4 MiB (639995904 bytes)
+no label, UUID=7d6e1500-42d9-4337-9ec2-d18116859dea
+</code></pre>
+<p>Dosya swap için kullanıma hazır, son olarak aktif hale getirmek gerekiyormuş.</p><pre><code class="language-bash">sudo swapon /swapfile
+</code></pre>
+<p>Hepsi bu kadar.Swap alanını sorguladığımız komutu tekrar çalıştırınca başarılı bir şekilde swap alanı oluşturduğumuzu görebileceğiz.</p><pre><code class="language-bash">free -m
+</code></pre>
+<pre><code class="language-wiki">              total        used        free      shared  buff/cache   available
+Mem:            581         139          64           6         376         305
+Swap:           610           0         610
+
+</code></pre>
+<p>Şuan sistemi restart edersek bu swap alanının kaybolduğunu göreceğiz çünkü kalıcı olarak da ayarlanması gerekiyor(muş).</p><pre><code class="language-bash">sudo vim /etc/fstab
+</code></pre>
+<p>Açılan dosyada şu satırı ekliyoruz,</p><pre><code class="language-wiki">...
+/swapfile   none    swap    sw    0   0
+...
+</code></pre>
+<p>Sanırım tüm Linux sistemlerde default olarak swap alanına ait <strong>swappiness</strong> değeri <strong>60</strong> olarak  geliyor.Bu değer yukarıda da bahsettiğim gibi, RAM kapasitesinin %60'ı dolduğunda swap alanında geçilsin gibi algılanabilir.Biz de sunucumuzdaki bu değere bakalım.</p><pre><code class="language-bash">cat /proc/sys/vm/swappiness
+60
+</code></pre>
+<p>Disklerin okuma/yazma oranının RAM'lere göre çok daha düşük olduğunu yazmıştım.Bu yüzden de ben RAM'in doluluk oranının %100'e geldiği vakit swap alanını kullanmaya başlamasını tercih edeceğim.swappiness değerini bunun için sıfır yapmamız gerekiyor.</p><pre><code class="language-bash">sudo vim /etc/sysctl.conf
+</code></pre>
+<p>En alt satıra,</p><pre><code class="language-wiki">...
+vm.swappiness=0 
+...
+</code></pre>
+<p>ekliyoruz.Ardından dosyayı kaydedip çıkıyoruz.Neyseki başıma bir şey gelmeden bu blog yazısını da tamamlamış oluyorum.</p><figure class="kg-card kg-image-card"><img src="/content/images/2018/10/Screenshot-from-2018-10-26-20-38-29.png" class="kg-image"></figure><p>Web ve Zabbix sunucularımda 1.7GB RAM bulunuyor.RAM tüketimleri de 1GB seviyelerinde.Bu yüzden onlar için 1GB swap alanı düşünüyorum.Master DNS Sunucu da 1GB RAM alanına sahip fakat o sunucu Digital Ocean'da barınıyor ve SSD'li olduğu için swap alanı oluşturup oluşturmayacağıma henüz karar vermedim.Eğer oluşturursam da bu alan 1GB olur.</p><p>[1] <a href="https://www.digitalocean.com/community/tutorials/how-to-add-swap-space-on-ubuntu-16-04">How To Add Swap Space on Ubuntu 16.04</a><br>[2] <a href="https://help.ubuntu.com/community/SwapFaq">SwapFaq</a><br>[3] <a href="https://askubuntu.com/questions/508870/what-is-a-swap-area">What is a “Swap Area”?</a><br>[4] <a href="https://www.quora.com/Is-it-necessary-to-take-a-swap-area-to-Linux">Is it necessary to take a swap area to Linux?</a></p>
+
+
+// 28 October 2018  Linux, Swap Area

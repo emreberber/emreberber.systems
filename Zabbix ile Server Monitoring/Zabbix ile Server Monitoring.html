@@ -1,0 +1,179 @@
+<p>Staj bittikten sonra uzun zamandır (1 aydan fazla) blog yazamadım.Blog yazamayışımın en temel nedeni ise emreberber.net alan adından emreberber.systems'a geçmemdi.Nginx ve SSL tarafındaki tecrübesizliğim olduça zamanımı aldı diyebilirim.Bu süre içinde yaşadıklarımı yazsam roman olur, o yüzden yazmıyorum.Konumuza gelecek olursak, Zabbix ile daha önce tanışmadıysanız önce bi tanıştıralım.</p><p>"15 yılı aşkın süredir birçok kurumun altyapısında kullanılan Zabbix uygulama, sistem, ağ ve altyapıların izlenlenmesi (monitoring) ve uyarılar üretilmesi (alert) için bir sunucu servisidir." (<a href="https://ozguryazilim.com.tr/sistem-yonetimi/sunucu-teknolojileri/sistem-yonetim-araclari/zabbix/">Özgür Yazılım A.Ş. - Zabbix</a>)</p><figure class="kg-card kg-image-card"><img src="/content/images/2018/10/zabbix--1-.png" class="kg-image"></figure><p><br>Benim Zabbix ile tanışmam staj sayesinde oldu.Stajdan sonra da kendi suncularım için Zabbix kullama düşüncem vardı.Böylece Zabbix ile ilgili daha fazla tecrübe edinebilecektim.Şu sıralarda da Zabbix sistemimi oturtmuş olup inceliklerini öğrenmeye çalışıyorum.Bu yazımda kurulum ve ilk ayarlamaların dışında dikkat edilmesi gereken noktalara değineceğim.Kurulum işlemlerini <strong>Ubuntu 16.04</strong> üzerinde anlatacağım.</p><p><strong>Ne ister ? </strong><br>- Apache<br>- MySQL<br>- PHP</p><p>Öncesinde,</p><pre><code class="language-bash">sudo dpkg-reconfigure tzdata
+    sudo apt-get update
+    </code></pre>
+    <p>Sonrasında Apache kurulumunu ve yapılandırılmasına geçelim.</p><pre><code class="language-bash">sudo apt-get install apache2
+    sudo apache2ctl configtest
+    sudo vim /etc/apache2/apache2.conf
+    </code></pre>
+    <p>Açılan dosyanın en altına,</p><pre><code class="language-wiki">...
+    ServerName 35.241.203.39
+    </code></pre>
+    <p>Satırını ekliyoruz.IP Adresi, üzerinde kurulumu gerçekleştirdiğiniz Zabbix sunucunun adresidir.Dilerseniz IP Adresi yerine domain name yazabilirsiniz. </p><pre><code class="language-bash">sudo apache2ctl configtest
+    sudo servis apache2 restart
+    sudo servis apache2 status
+    </code></pre>
+    <p>Apache için son olarak firewall ayarını yapacağız.Default olarak ufw <strong>inactive</strong> gelmekte, önce bunu <strong>active</strong> yapacağız.</p><pre><code class="language-bash">sudo ufw status
+    sudo ufw allow ssh
+    sudo ufw enable
+    sudo ufw allow in &quot;Apache Full&quot;
+    sudo ufw app list
+    </code></pre>
+    <p>Tarayıcıda http://35.241.203.39 adresini girince (/var/www/html) klasik Apache sayfasını görüyoruz ve MySQL kurulumuna geçiyoruz.</p><pre><code class="language-bash">sudo apt-get install mysql-server
+    mysql_secure_installation
+    </code></pre>
+    <p>Burada sizden root parolası, parola onaylama, root parolası değiştirme gibi sorular sorar.Bu sorulardan sonra gelen soruların tamamına <strong>Y</strong> diyebiliriz.Şimdi de sırada PHP var.</p><figure class="kg-card kg-image-card"><img src="/content/images/2018/10/as-bayraklari-as.jpg" class="kg-image"><figcaption>PHP &lt;3</figcaption></figure><hr><pre><code class="language-bash">sudo apt-get install php libapache2-mod-php php-mcrypt php-mysql
+    sudo vim /etc/apache2/mods-enabled/dir.conf
+    </code></pre>
+    <p>Açılan dosyada index.php'yi index.html'den önce gelecek şekilde değiştirelim.</p><pre><code class="language-wiki">&lt;IfModule mod_dir.c&gt;
+        DirectoryIndex index.php index.html index.cgi index.pl index.xhtml index.htm
+    &lt;/IfModule&gt;
+    </code></pre>
+    <pre><code class="language-bash">sudo service apache2 restart
+    sudo service apache2 status
+    </code></pre>
+    <p>PHP test işlemi için <strong>/var/www/html</strong> dizininde <strong>info.php</strong> adında php dosyasını oluşturalım.</p><pre><code class="language-bash">sudo vim /var/www/html/info.php
+    </code></pre>
+    <pre><code class="language-wiki">&lt;?php
+    phpinfo();
+    ?&gt;
+    </code></pre>
+    <p>/var/www/html dizinini daha önce görüntülemiştik.Burası web sunucumuzun ana diziniydi.info.php dosyasını tarayıcıda görüntülemek için ise http://35.241.203.39/info.php yazmamız gerekir.PHP detay sayfasını görebildikten sonra bu dosyayı silebiliriz.</p><pre><code class="language-bash">sudo rm /var/www/html/info.php
+    </code></pre>
+    <h2 id="zabbix-server-kurulumu">Zabbix Server Kurulumu</h2><p>Kurulumdan önce sistemimizin güncel olduğundan emin olalım ve ardından gerekli olan php modüllerini kuralım.Zabbix için gerekli olan <strong>.deb</strong> uzantılı paketi <strong>repo.zabbix</strong> adresinden çekiyoruz.Benim sistemimde Ubuntu 16.04 kurulu olduğu için Zabbix 3.2 sürümünü tercih ettim.Digital Ocean rehberinde de bunu kullanmış.Kullanacağınız sürüme göre paketin yolunu değiştirmenizde fayda var.</p><p><code>sudo apt-get update</code><br>
+    <code>sudo apt-get install php7.0-xml php7.0-bcmath php7.0-mbstring</code><br>
+    <code>wget http://repo.zabbix.com/zabbix/3.2/ubuntu/pool/main/z/zabbix-release/zabbix-release_3.2-1+xenial_all.deb</code><br>
+    <code>sudo dpkg -i zabbix-release_3.2-1+xenial_all.deb</code><br>
+    <code>sudo apt-get update</code><br>
+    <code>sudo apt-get install zabbix-server-mysql zabbix-frontend-php</code><br>
+    <code>sudo apt-get install zabbix-agent</code></p>
+    <p>En son yüklediğimiz <strong>zabbix-agent</strong>'dan bahsetmek gerekirse, agent kelimesinin Türkçe karşılığı temsilci, distribütör olarak geçmektedir.Yani agent dediğimiz şey aslında bizim Zabbix ile izleyeceğimiz sunucuları temsil etmekte.Zabbix sunucuda da kurmamızın sebebi ise bu sunucuyu da izlemek istememizdir.</p><p><strong>MySQL</strong></p><pre><code class="language-bash">mysql -u root -p 
+    mysql&gt; create database zabbix character set utf8 collate utf8_bin;
+    mysql&gt; grant all privileges on zabbix.* to zabbix@localhost identified by 'PASSWORD';
+    mysql&gt; flush privileges;
+    mysql&gt; quit;
+    sudo vim /etc/zabbix/zabbix_server.conf
+    </code></pre>
+    <p>Açılan dosyada <strong>DBPassword</strong> alanında az önce veritabanımız için belirlediğimiz parolayı yazıyoruz.</p><pre><code class="language-wiki">### Option: DBPassword
+    #       Database password. Ignored for SQLite.
+    #       Comment this line if no password is used.
+    #
+    # Mandatory: no
+    # Default:
+    DBPassword=PASSWORD
+    </code></pre>
+    <p><strong>PHP</strong></p><pre><code class="language-bash">sudo vim /etc/zabbix/apache.conf
+    </code></pre>
+    <pre><code class="language-wiki">&lt;IfModule mod_php7.c&gt;
+        php_value max_execution_time 300
+        php_value memory_limit 128M
+        php_value post_max_size 16M
+        php_value upload_max_filesize 2M
+        php_value max_input_time 300
+        php_value always_populate_raw_post_data -1
+        php_value date.timezone Europe/Istanbul
+    &lt;/IfModule&gt;
+    </code></pre>
+    <pre><code class="language-bash">sudo service apache2 restart
+    sudo service zabbix-server start 
+    sudo service zabbix-server status 
+    </code></pre>
+    <pre><code class="language-wiki">● zabbix-server.service - Zabbix Server
+       Loaded: loaded (/lib/systemd/system/zabbix-server.service; enabled; vendor preset: enabled)
+       Active: active (running) since Tue 2018-10-09 17:47:47 +03; 5 days ago
+     Main PID: 22793 (zabbix_server)
+        Tasks: 28
+       Memory: 31.7M
+          CPU: 20min 30.961s
+       CGroup: /system.slice/zabbix-server.service
+    ...
+    </code></pre>
+    <p>Sunucumuz çeşitli sebeplerden ötürü yeniden başlatılabilir, ve her başlamada zabbix-server'ın otomatik çalışmasını sağlayabiliriz.</p><pre><code class="language-bash">sudo systemctl enable zabbix-server
+    </code></pre>
+    <p>Tarayıcıda http://35.241.203.39/zabbix/ adresini açıyorum.Bu sayfadaki ayarlarda herhangi bir değişiklik yapmamıştım diye hatırlıyorum, tam da emin değilim :) En son Login sayfasına varınca User olarak <strong>Admin</strong> Password olarak da <strong>zabbix</strong> yazarsınız.Giriş yapar yapmaz parolayı değiştirmeyi de ihmal etmeyin.</p><h2 id="zabbix-agent-kurulumu">Zabbix Agent Kurulumu</h2><p>Şimdi de Zabbix ile izlemek istediğimz sunucudayız.</p><p><code>wget http://repo.zabbix.com/zabbix/3.2/ubuntu/pool/main/z/zabbix-release/zabbix-release_3.2-1+xenial_all.deb</code><br>
+    <code>sudo dpkg -i zabbix-release_3.2-1+xenial_all.deb</code><br>
+    <code>sudo apt-get update</code><br>
+    <code>sudo apt-get install zabbix-agent</code></p>
+    <p>Buraya kadar olan kısımlarda yabancılık çekmedik.Daha ince ayarlardan bahsedeceğimiz kısımlara geçiyoruz.Sunucular arasında veri aktarımını güvenli bir şekilde oluşturmak için <strong>PSK </strong>(pre-shared keys) oluşturuyoruz.Bu anahtarı Zabbix'in Web arayüzünde host eklemek için kullanacağız.</p><pre><code class="language-bash">sudo sh -c &quot;openssl rand -hex 32 &gt; /etc/zabbix/zabbix_agentd.psk&quot;
+    cat /etc/zabbix/zabbix_agentd.psk
+    </code></pre>
+    <p>Agent için son olarak <strong>zabbix_agentd.conf</strong> dosyasında yapmamız gereken değişiklikler kaldı.</p><pre><code class="language-bash">sudo vim /etc/zabbix/zabbix_agentd.conf
+    </code></pre>
+    <pre><code class="language-wiki">...
+    ### Option: Server
+    #       List of comma delimited IP addresses (or hostnames) of Zabbix servers.
+    #       Incoming connections will be accepted only from the hosts listed here.
+    #       If IPv6 support is enabled then '127.0.0.1', '::127.0.0.1', '::ffff:127.0.0.1' are treated equally.
+    #
+    # Mandatory: no
+    # Default:
+    # Server=
+    
+    Server=ZABBIX_SERVER_IP_ADDRESS
+    
+    ...
+    
+    ### Option: TLSConnect
+    #       How the agent should connect to server or proxy. Used for active checks.
+    #       Only one value can be specified:
+    #               unencrypted - connect without encryption
+    #               psk         - connect using TLS and a pre-shared key
+    #               cert        - connect using TLS and a certificate
+    #
+    # Mandatory: yes, if TLS certificate or PSK parameters are defined (even for 'unencrypted' connection)
+    # Default:
+    TLSConnect=psk
+    
+    ...
+    
+    ### Option: TLSAccept
+    #       What incoming connections to accept.
+    #       Multiple values can be specified, separated by comma:
+    #               unencrypted - accept connections without encryption
+    #               psk         - accept connections secured with TLS and a pre-shared key
+    #               cert        - accept connections secured with TLS and a certificate
+    #
+    # Mandatory: yes, if TLS certificate or PSK parameters are defined (even for 'unencrypted' connection)
+    # Default:
+    TLSAccept=psk
+    
+    ...
+    
+    ### Option: TLSPSKIdentity
+    #       Unique, case sensitive string used to identify the pre-shared key.
+    #
+    # Mandatory: no
+    # Default:
+    TLSPSKIdentity=PSK 001
+    
+    ...
+    
+    ### Option: TLSPSKFile
+    #       Full pathname of a file containing the pre-shared key.
+    #
+    # Mandatory: no
+    # Default:
+    TLSPSKFile=/etc/zabbix/zabbix_agentd.psk
+    </code></pre>
+    <p>PSK 001, bu sunucu için oluşturduğumuz PSK'yı tanımlayan ID değeri olarak düşünebiliriz.Bundan sonra izleyeceğimiz sunuculara da PSK 002, PSK 003 .. diye isimlendirmeler kullanmak daha mantıklı olacaktır.PSK 001'i de Zabbix'in Web arayüzünde host eklerken kullanacağız.</p><pre><code class="language-bash">sudo service zabbix-agent start
+    sudo systemctl enable zabbix-agent
+    sudo service zabbix-agent status
+    </code></pre>
+    <pre><code class="language-wiki">● zabbix-agent.service - Zabbix Agent
+       Loaded: loaded (/lib/systemd/system/zabbix-agent.service; enabled; vendor preset: enabled)
+       Active: active (running) since Wed 2018-10-10 00:59:16 +03; 4 days ago
+      Process: 18310 ExecStop=/bin/kill -SIGTERM $MAINPID (code=exited, status=0/SUCCESS)
+      Process: 18313 ExecStart=/usr/sbin/zabbix_agentd -c $CONFFILE (code=exited, status=0/SUCCESS)
+     Main PID: 18326 (zabbix_agentd)
+        Tasks: 6
+       Memory: 5.4M
+          CPU: 4min 50.180s
+       CGroup: /system.slice/zabbix-agent.service
+    ...
+    </code></pre>
+    <p><strong>! </strong>Yazının başında ufw'yi akfif hale getirmiştik.Zabbix <strong>TCP 10050</strong> portunu kullanıyor.Dolayısıyla bu porta izin vermemiz gerekir.Benim sunucum Google Cloud üzerinde bulunduğu için Google Cloud'ın arayüzünden de Firewall sekmesinde 10050 portunu aktif hale getirdim.Bu aynı zamanda, kurulumdan sonra karşılaştğım ilk hatanın çözümüydü.</p><pre><code class="language-bash">sudo ufw allow 10050/tcp 
+    sudo ufw status
+    </code></pre>
+    <p>Web arayüzüne giriş yaptık.Configuration -&gt; Hosts -&gt; Create host adımlarını takip ediyoruz.Burada bizim için <strong>Host</strong>, <strong>Templates</strong> ve <strong>Encryption</strong> sekmeleri önemli.Host sekmesinde Host name belirliyoruz.Ardından bu hostu bir gruba atıyoruz.Özellikle çok fazla sunucuyu kontrol edecekseniz bu özellik çok kullanışlı olur.Daha sonra Agent interfaces alanındaki IP address inputuna ekleyeceğimiz host'un IP Adresini yazıyoruz.Templates sekmesinde arama kutucuğunu kullanarak Template OS Linux isimli template'i seçip <strong>Add</strong> ile ekliyoruz.Encryption sekmesinde de <strong>Connections to host</strong> ve<strong> Connections from host</strong> alanlarını <strong>PSK</strong> olarak seçip, <strong>PSK identity</strong>'i belirlediğimiz PSK 001 ve PSK değerini de /etc/zabbix/zabbix_agentd.psk dosyasındaki değeri yazıyoruz.</p><figure class="kg-card kg-image-card"><img src="/content/images/2018/10/Screenshot-from-2018-10-15-00-34-11.png" class="kg-image"></figure><p><strong>Hosts</strong> sayfasna geri dönünce Status kısmında <strong>Enabled</strong>, Availability kısmında ise <strong>ZBX</strong> kutucuğunun yeşil renkte olması bizim istediğimiz durumlardır.</p><figure class="kg-card kg-image-card"><img src="/content/images/2018/10/Screenshot-from-2018-10-15-00-46-54.png" class="kg-image"></figure><p>Monitoring kısmında ise <strong>Dashboard</strong> sekmesinde eklediğimiz hostlar hakkında genel bilgi, <strong>Problems</strong> sekmesinde ise adından da anlayabileceğimiz üzere sistemlerdeki problemleri detayları ile (Başlangıç saati, çözüldüğü saat, toplam süre, derece gibi) görüntüleyebiliyoruz.</p><figure class="kg-card kg-image-card"><img src="/content/images/2018/10/Screenshot-from-2018-10-15-00-54-58.png" class="kg-image"></figure><p><strong>Graphs</strong> sekmesi göze en hoş gelen sekme.Eklediğimiz host'lara ait cpu, disk, memory, network gibi önemli verilerin tutulduğu grafikleri görebilmekteyiz.Default olarak son bir saate ait verileri gösterir, grafiğin üzerindeki panelden zaman dilimini değiştirebiliyoruz.</p><figure class="kg-card kg-image-card"><img src="/content/images/2018/10/Screenshot-from-2018-10-15-00-55-30.png" class="kg-image"></figure><p>Zabbix panelimize girmek için kullandığımız http://IP_ADDRESS/zabbix adresi göze pek de hoş gelmiyor.Bunun yerine zabbix.emreberber.systems gibi subdomain kullanmak daha mantıklı.Bu işlemleri yazı fazla uzun olmasın diye diğer blog yazısına sakladım.</p><p>Zabbix'in Open source ve Free olduğunu hatırlatarak, alternatiflerinin de olduğuna yer verelim.</p><p><strong>Alternatifleri ?</strong><br>– Nagios <br>– Prometheus<br>– Solarwinds NPM<br>– Icinga<br>– Pandora FMS<br>– PRTG Network Monitor by Paessler<br>– ManageEngine OpManager<br>...</p><p></p><p>[1] <a href="https://www.digitalocean.com/community/tutorials/how-to-install-and-configure-zabbix-to-securely-monitor-remote-servers-on-ubuntu-16-04">How to Install and Configure Zabbix to Securely Monitor Remote Servers on Ubuntu 16.04</a><br>[2] <a href="https://ozguryazilim.com.tr/sistem-yonetimi/sunucu-teknolojileri/sistem-yonetim-araclari/zabbix/">Özgür Yazılım A.Ş. - Zabbix</a><br>[3] <a href="https://www.quora.com/Which-is-the-best-network-monitoring-tool-Nagios-or-Zabbix">Which is the best network monitoring tool: Nagios or Zabbix?</a><br>[4] <a href="https://www.quora.com/What-can-zabbix-do">What can zabbix do?</a><br>[5] <a href="https://www.quora.com/Whats-the-difference-between-Prometheus-and-Zabbix">What's the difference between Prometheus and Zabbix?</a><br>[6] <a href="https://www.amazon.com/Mastering-Zabbix-Andrea-Dalle-Vacche/dp/1785289268">Mastering Zabbix - Second Edition</a></p>
+    
+
+// 17 October 2018  Zabbix, Monitoring, Ubuntu Server
