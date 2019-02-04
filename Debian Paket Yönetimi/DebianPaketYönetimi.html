@@ -1,0 +1,90 @@
+ <p>Araya yine uzun bir zaman girmesinin ardından blog yazmaya kaldığım yerden devam ediyorum.Bir aralar blog konusu bulmakta sıkıntı çekmeme rağmen şu sıralar blog listem oldukça uzun.Bu yüzden fazla zaman kaybetmeden yazıya girişimi yapıyorum.</p><p>Debian ve Debian tabanlı tüm dağıtımlar(*) için hazırlamış olduğum bu blog yazısına sponsor olduğu için buradan <a href="https://www.debian.org/index.tr.html">Debian</a>'a teşekkürlerimi iletiyorum.</p><figure class="kg-card kg-image-card"><img src="/content/images/2018/12/package-management-1.png" class="kg-image"></figure><p><strong>Paket Nedir ? </strong><br>Paket, bir uygulamanın derlenmiş koduna denir.Windows tarafındaki <strong>.exe</strong> uzantılı dosyaları düşünebiliriz.Debian tabanlı dağıtımlarda ise <strong>.deb</strong> uzantısı bu dosyanın bir 'Debian Paketi' olduğu anlamına gelir.Paket kurulumu ise Windows tarafına göre oldukça farklılık gösterir.Birazdan bu konulara da değinmiş olacağım.Şuan için önemli olan paket kelimesinin zihnimizde ne çağrıştırdığıdır.</p><p><strong>Paket Yönetim Sistemi Nedir ? (PMS)</strong><br>Sistemimize paket kurulumu, paket silme, kurulu olan paketleri güncelleme gibi işlemleri yapabilmemize sağlayan araçtır.Debian tabanlı dağıtımlarda birden fazla paket yönetim sistemi bulunuyor.Bu yazıda <strong>apt</strong> ve <strong>dpkg</strong>'den bahsedeceğim.Ama öncesinde apt ve apt-get'e değinelim.</p><p><strong>apt ve apt-get ?</strong><br>APT (Advanced Packaging Tool), paket yöneticimiz oluyor.Terminalde apt-get komutu ile kullanılıyor.Ubuntu 16.04 LTS sürümüne kadar apt-get ve apt-cache komutları kullanılmaktaydı fakat 16.04 ile bu iki komutun yerini alan apt komutunu getirdiler.Böylece hem apt-get ile kullanılmayan birçok komut kaldırılmış oldu hem de son kullanıcının paket yönetimi kolaylaştı.Yapılan bir araştırmaya göre her 10 Debian kullanıcısından 9'u apt-get yerine apt kullanıyormuş.</p><p>Bu iki komut arasındaki farklılıklara birkaç örnek de verelim,<br>apt-get install yerine apt install<br>apt-get remove yerine apt remove<br>apt-cache search yerine apt search gibi gibi</p><pre><code>$ sudo apt list
+$ sudp apt edit-sources	
+</code></pre>
+<p>'apt list' ile sistemde kurulu olan paketleri terminalde gösterir.'edit-sources' ile de paket listesini terminalde editör kullanarak açar.(vim, nano vs.)</p><h2 id="apt-advanced-packaging-tool-">APT (Advanced Packaging Tool)</h2><p>Sistemimizin halihazırda kullandığı paketler vardır.Her Linux kullanıcısının bildiği ortak komutlardan birkaçı da update ve upgrade'dir.</p><pre><code>$ sudo apt update
+$ sudo apt upgrade
+</code></pre>
+<p>Halk arasında bu iki komutun birbirinden farkının tam olarak bilindiğini düşünmüyorum.(Kendimden biliyorum).Yukarıda sistemin kullandığı paketlerden bahsettik.Öncelikle bu paketlerin neler olduğuna bir bakalım.</p><pre><code>$ sudo apt edit-sources
+</code></pre>
+<p>Açılan dosya <strong>/etc/apt/sources.list</strong> dizininde bulunur.<br><strong>update</strong> komutu ile herhangi bir kurulum yapılmaz.Sadece sistemde kurulu olan paketlerin depolarına bakılır ve paket versiyonları güncellenir.Yani buradaki güncelleme, listenin güncellenmesidir.<br><strong>upgrade</strong> komutu ise bu paketlerin bu listedeki versiyonlarına yükseltilmesini sağlar.Önemli bir nokta ise burada sadece kurulu olan paketlerin yükseltilmesidir.</p><p>APT'nin paket listesini kullanarak kurmak istediğimiz paketi bulabiliyoruz.</p><pre><code># sudo apt search paket-adi 
+$ sudo apt search vim
+</code></pre>
+<pre><code class="language-wiki">Sorting... Done
+Full Text Search... Done
+
+...
+
+vim-snippets/bionic,bionic 1.0.0-4 all
+  Snippets files for various programming languages.
+
+vim-syntastic/bionic,bionic 3.8.0-1 all
+  Syntax checking hacks for vim
+
+vim-syntax-docker/bionic-updates,bionic-updates 18.06.1-0ubuntu1~18.04.1 all
+  Docker container engine - Vim highlighting syntax files
+
+vim-syntax-gtk/bionic,bionic 20110314-1 all
+  Syntax files to highlight GTK+ keywords in vim
+
+...
+</code></pre>
+<p>Bir paket hakkında detaylı bir bilgi almak isteyebilirsiniz.(Kimdir, kimlerdendir ?)</p><pre><code># sudo apt show paket-adi
+$ sudo apt show wireshark
+</code></pre>
+<pre><code class="language-wiki">Package: wireshark
+Version: 2.6.4-2~ubuntu18.04.0
+Priority: optional
+Section: universe/net
+Origin: Ubuntu
+Maintainer: Balint Reczey &lt;rbalint@ubuntu.com&gt;
+Bugs: https://bugs.launchpad.net/ubuntu/+filebug
+Installed-Size: 55,3 kB
+Depends: wireshark-qt | wireshark-gtk
+Conflicts: ethereal (&lt;&lt; 1.0.0-3)
+Replaces: ethereal (&lt;&lt; 1.0.0-3)
+Homepage: http://www.wireshark.org/
+Download-Size: 4.480 B
+APT-Manual-Installed: no
+APT-Sources: http://tr.archive.ubuntu.com/ubuntu bionic-updates/universe amd64 Packages
+Description: network traffic analyzer - meta-package
+ Wireshark is a network &quot;sniffer&quot; - a tool that captures and analyzes
+ packets off the wire. Wireshark can decode too many protocols to list
+ here.
+ .
+ This is a meta-package for Wireshark.
+</code></pre>
+<p>.deb uzantılı paketleri yüklemek için apt install kullanıyoruz.Ubuntu'da görsel paket yönetim uygulaması gelmesine rağmen terminalden bu işlemleri yapabiliyor olamamız lazım.Bu adımı uygulamalı olarak anlacağım.Örneğin bilgisayarıma virtualbox kurmam gerekiyor.Fakat ben seacrh bulunan paketi değil de bir başka versiyonunu yüklemek istemiş olayımYa da aradığım paket, paket yöneticisinin kendi listesinde bulunmuyor olsun.Bu ve bunun gibi durumlarda .deb uzantılı paketi benim kendim edinmem gerekir.(<a href="https://www.virtualbox.org/wiki/Linux_Downloads">https://www.virtualbox.org/wiki/Linux_Downloads</a>) indirdiğimiz dizine terminal ekranından ulaşarak,</p><pre><code>sudo apt install ./virtualbox-5.2_5.2.22-126460_Ubuntu_bionic_amd64.deb
+</code></pre>
+<p>komutu ile kurulumu yapıyoruz.Burada dikkat etmeniz gereken kısım dosyanın isminden önce ./ yazmamızdır.Böylece kurulacak olan paketin bu dizinde olduğunu belirtiyoruz.Aksi taktirde kendi paket listesinde bu dosyayı arayacak ve bulamayacaktır.Yes mi no mi falan derse de yes dersiniz :) <strong>-y</strong> parametresi vererek otomatik olarak bütün hepsine yes demiş olursunuz.</p><p>Herhangi bir yüklü paketi kaldırmak isterseniz de,</p><pre><code># sudo apt remove paket-adi
+$ sudo apt remove virtualbox
+
+$ sudo apt autoremove
+</code></pre>
+<p>autoremove ile yüklü ama kullanılmayan paketlerinin kaldırılmasını sağlıyoruz.Hangi paketlerin kaldırıldığını ve diskte toplamda ne kadar yer açılacağını belirtir.</p><p>Bir paketin kurulumu başka paketlerin kurulumunu gerektirebilir.Buna o paketin bağımlılıkları denir.remove komutunun dışında <strong>purge</strong> komutu daha çok tercih edilir.Sebebi ise hem bağımlılıklarıyla paketi kaldırır hem de paketin ayar dosyalarını kaldırır.Örneğin kullandığımız editörleri kendimize göre ayarlarız.Editörü silip tekrar yüklediğimiz de var olan ayar dosyası mı import edilsin yoksa default olan mı import edilsin diye bir seçenek sunar.Purge ile paketi kaldırısanız uygulama ayar dosyasına ulaşamaz.(conf dosyaları /etc dizininde bulunur.)</p><p>Bağımlıklıklarla beraber tüm sistemin güncellenmesi için kullanılan apt-get dist-upgrade komutunun yerini apt full-upgrade almıştır.</p><pre><code>$ sudo apt full-upgrade
+</code></pre>
+<p></p><h2 id="dpkg-package-manager-for-debian-">DPKG (package manager for Debian)</h2><p>Bir diğer paket yönetim sistemi de dpkg'dir.Bunda da yine aynı şekilde paket kurulumu, kaldırma gibi işlemleri gerçekleştirebiliyoruz.</p><pre><code># Paket kurulumu.Kurulacak olan paketi ve bağımlılıkları önceden internetten indirilmelidir.
+$ sudo dpkg -i paket-adi.deb
+
+# Paket kaldırma
+$ sudo dpkg -r paket-adi
+
+# Paketi bağımlılıkları ile kaldırma
+$ sudo dpkg -P paket-adi
+
+# Kurulu olan bütün paketleri listeler
+$ sudo dpkg -l
+
+# Paket hakkında info
+$ sudo dpkg -s paket-adi
+
+# .deb uzantılı paket hakkında bilgi verir
+$ sudo dpkg -I paket-adi
+
+#  İndirdiğimiz ama kurmağımız paketin içeriğini gösterir
+$ sudo dpkg -c paket-adi
+
+# Sistemde kurulu olan paketin içeriğini gösterir
+$ sudo dpkg -L paket-adi
+</code></pre>
+<p>Aşağıda da hem bu yazıyı yazarken kullandığım kaynakları hem de diğer paket yönetim sistemleri ile alakalı feyz-i bol linkler bırakıyorum.</p><p>(*) <a href="http://www.wikizeroo.net/index.php?q=aHR0cHM6Ly9lbi53aWtpcGVkaWEub3JnL3dpa2kvQ2F0ZWdvcnk6RGViaWFuLWJhc2VkX2Rpc3RyaWJ1dGlvbnM">Category:Debian-based distributions</a><br>[1] <a href="https://gist.github.com/sayz/1130312/a45b548b82ee459e05a9159ec532224757a2ca56">sayz/0_user-accounts.md</a><br>[2] <a href="https://itsfoss.com/apt-vs-apt-get-difference/">Difference Between apt and apt-get Explained</a><br>[3] <a href="https://www.digitalocean.com/community/tutorials/package-management-basics-apt-yum-dnf-pkg">Package Management Basics: apt, yum, dnf, pkg</a><br>[4] <a href="https://www.tecmint.com/linux-package-management/">Linux Package Management with Yum, RPM, Apt, Dpkg, Aptitude and Zypper – Part 9</a><br>[5] <a href="https://www.linode.com/docs/tools-reference/linux-package-management/">Linux Package Management</a></p>
+
