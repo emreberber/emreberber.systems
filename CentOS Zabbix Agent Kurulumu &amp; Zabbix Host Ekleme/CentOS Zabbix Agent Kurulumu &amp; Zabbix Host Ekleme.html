@@ -1,0 +1,75 @@
+<p>Önceki <a href="https://emreberber.systems/authoritative-only-slave-bind-dns-server/">blog</a> yazısında Azure platformunda sanal makine oluşturup CentOS dağıtımı üzerinde Slave Bind DNS Server kurulumu yapmıştık. Bu sunucu için Zabbix Agent kurulumunu da anlatmak istedim. Ubuntu için Zabbix ve Zabbix Agent kurulumu için de bu <a href="https://emreberber.systems/zabbix-ile-server-monitoring/">blog</a> yazısına bakabilirsiniz</p><figure class="kg-card kg-image-card"><img src="/content/images/2019/02/154945373658754325.jpeg" class="kg-image"></figure><p>Agent olacak olan sunucuya bağlantı gerçekleştirelim,</p><pre><code>$ ssh user@ipaddr
+</code></pre>
+<p>Diğer sunuculardaki Zabbix sürümüyle aynı olsun diye <strong>repo.zabbix.com</strong> adresinden 3.2 sürümüne ait CentOS paketinin yolunu buldum. </p><pre><code class="language-wiki">http://repo.zabbix.com/zabbix/3.2/rhel/7/x86_64/zabbix-release-3.2-1.el7.noarch.rpm
+</code></pre>
+<p>Bu paket yolunu kullanarak, sistemimize paketi kuruyoruz.</p><p><code>$ sudo rpm -ivh http://repo.zabbix.com/zabbix/3.2/rhel/7/x86_64/zabbix-release-3.2-1.el7.noarch.rpm</code></p>
+<pre><code class="language-wiki">i - install (This installs a new package)
+v - verbose (using or expressed in more words than are needed)
+h - hash (Print 50 hash marks as the package archive is unpacked)
+</code></pre>
+<p>CentOS'un paket yöneticisi olan <strong>yum </strong>ile zabbix-agent kurulumunu gerçekleştiriyoruz.</p><p><code>$ sudo yum install zabbix-agent</code></p>
+<p>Zabbix Sunucu ile Zabbix Agent arasında kullanılacak olan şifreleme için PSK Anahtarını üretiyoruz ve bu değeri dosyaya yazıyoruz.</p><p><code>$ sudo sh -c &quot;openssl rand -hex 32 &gt; /etc/zabbix/zabbix_agentd.psk&quot;</code></p>
+<p>Üretilen PSK değerini <strong>cat </strong>komutu ile görebiliriz.</p><p><code>$ cat /etc/zabbix/zabbix_agentd.psk</code></p>
+<pre><code class="language-wiki">3f42140c31f9ac875cbaf6801741998d3500bf9bbc69a5992442589e04ec27c4
+</code></pre>
+<p>Bu değeri birazdan yeni Host eklerken kullanacağız.</p><p><code>$ sudo vim /etc/zabbix/zabbix_agentd.conf</code></p>
+<p>Açılan sayfada ilgili alanları aşağıda belirtilen şekilde güncelliyoruz.</p><pre><code class="language-wiki">...
+### Option: Server
+#       List of comma delimited IP addresses (or hostnames) of Zabbix servers.
+#       Incoming connections will be accepted only from the hosts listed here.
+#       If IPv6 support is enabled then '127.0.0.1', '::127.0.0.1', '::ffff:127.0.0.1' are treated equally.
+#
+# Mandatory: no
+# Default:
+# Server=
+
+Server=40.121.48.54
+
+...
+
+### Option: TLSConnect
+#       How the agent should connect to server or proxy. Used for active checks.
+#       Only one value can be specified:
+#               unencrypted - connect without encryption
+#               psk         - connect using TLS and a pre-shared key
+#               cert        - connect using TLS and a certificate
+#
+# Mandatory: yes, if TLS certificate or PSK parameters are defined (even for 'unencrypted' connection)
+# Default:
+TLSConnect=psk
+
+...
+
+### Option: TLSAccept
+#       What incoming connections to accept.
+#       Multiple values can be specified, separated by comma:
+#               unencrypted - accept connections without encryption
+#               psk         - accept connections secured with TLS and a pre-shared key
+#               cert        - accept connections secured with TLS and a certificate
+#
+# Mandatory: yes, if TLS certificate or PSK parameters are defined (even for 'unencrypted' connection)
+# Default:
+TLSAccept=psk
+
+...
+
+### Option: TLSPSKIdentity
+#       Unique, case sensitive string used to identify the pre-shared key.
+#
+# Mandatory: no
+# Default:
+TLSPSKIdentity=PSK 004
+
+...
+
+### Option: TLSPSKFile
+#       Full pathname of a file containing the pre-shared key.
+#
+# Mandatory: no
+# Default:
+TLSPSKFile=/etc/zabbix/zabbix_agentd.psk
+</code></pre>
+<p>Zabbix Agent'lara sırasıyla  TLSPSKIdentity olarak PSK 001 'den başlayarak değer atadığım için buna da PSK 004 değerini verdim. Dosyayı kaydettikten sonra her başlangıç için zabbix-agent servisini enable ediyoruz. Ardından start ile başlatıp, status ile servise hal hatır soruyoruz.</p><p><code>$ sudo systemctl enable zabbix-agent</code><br>
+<code>$ sudo systemctl start zabbix-agent</code><br>
+<code>$ sudo systemctl status zabbix-agent</code></p>
+<p>Zabbix'in Web Arayüzünden Agent'ı eklemek için <strong>Configuration -&gt; Hosts -&gt; Create host </strong>adımlarını takip ediyoruz.</p><figure class="kg-card kg-image-card"><img src="/content/images/2019/02/2019-02-06_16-33.png" class="kg-image"></figure><p>Daha sonra <strong>Templates</strong> sekmesinde '<strong>Template OS Linux</strong>' isimli template'i seçip 'Add' ile ekliyoruz.</p><figure class="kg-card kg-image-card"><img src="/content/images/2019/02/2019-02-06_16-39.png" class="kg-image"></figure><p>Encryption sekmesinde 'Connections to host<strong>'</strong> ve<strong><strong> </strong>'</strong>Connections from host<strong>'</strong> alanlarını <strong><strong>PSK</strong></strong> olarak seçip, 'PSK identity<strong>' </strong>için belirlediğimiz PSK 004 ve PSK değerini de /etc/zabbix/zabbix_agentd.psk dosyasındaki değeri yazıyoruz.</p><figure class="kg-card kg-image-card"><img src="/content/images/2019/02/2019-02-06_16-54.png" class="kg-image"></figure><p>Son olarak Add ile Host ekleme işlemini gerçekleştiriyoruz. Tüm Host'ların görüntülendiği bu sayfada anormal bir durum olduğunu görüyoruz. Bunun sebebi tahminimce <strong>10050</strong> portuna izin verilmemiş olması.</p><figure class="kg-card kg-image-card"><img src="/content/images/2019/02/2019-02-06_16-50.png" class="kg-image"></figure><p>Sanal Makinenin yer aldığı sunucu platformu üzerinden 10050 portuna izin verdikten sonra zabbix-agent servisini <strong>restart</strong> etmek gerekiyor. Azure için yeni bir porta izin vermeyi bu <a href="https://emreberber.systems/authoritative-only-slave-bind-dns-server/">blog</a> yazımdan bakabilirsiniz.</p><figure class="kg-card kg-image-card"><img src="/content/images/2019/02/2019-02-07_11-30.png" class="kg-image"></figure><p>İşlem başarılı :)</p><p>[1]  <a href="https://emreberber.systems/zabbix-ile-server-monitoring/">Zabbix ile Server Monitoring</a><br>[2]  <a href="https://www.digitalocean.com/community/tutorials/how-to-install-and-configure-zabbix-to-securely-monitor-remote-servers-on-centos-7#step-5-%E2%80%94-installing-and-configuring-the-zabbix-agent">How To Install and Configure Zabbix to Securely Monitor Remote Servers on CentOS 7</a></p>
