@@ -1,0 +1,59 @@
+<p>Proje ve süreç yönetimi olarak sektörde bilinen Jira için, kurulum adımları da şurada bulunsun maksaydıyla yazdığım blog yazısı.</p><ul><li><strong>DevOps ? </strong> <a href="https://www.quora.com/What-is-DevOps">https://www.quora.com/What-is-DevOps</a></li><li><strong>Jira ?</strong> <a href="https://www.quora.com/What-is-JIRA-What-is-it-used-for">https://www.quora.com/What-is-JIRA-What-is-it-used-for</a><br></li></ul><p>VirtualBox'da daha önceden kurulu olan Ubuntu sunucuya kendi bilgisayarımdan erişmek için Network  yapılandırmasını <strong>Bridge</strong> olarak ayarlayacağım. Bu sayede hem sunucuya hem de Jira'ya bilgisayarımdan erişebileceğim. Name yazan kısım bilgisayarımın IP  aldığı Network arayüzünün ismidir. </p><figure class="kg-card kg-image-card"><img src="/content/images/2019/04/Screenshot-from-2019-04-14-18-31-08.png" class="kg-image"></figure><p>VirtualBox üzerinde açılan pencere yerine terminal üzerinden sunucuya ssh bağlantısı yaparak işlemlerimi gerçekleştireceğim. Bunun için sunucunun ip adresini biliyor olmamız gerekli.</p><figure class="kg-card kg-image-card"><img src="/content/images/2019/04/Screenshot-from-2019-04-14-18-31-41.png" class="kg-image"></figure><ul><li><a href="https://www.atlassian.com/software/jira/download"><strong>https://www.atlassian.com/software/jira/download</strong></a> adresinden .bin uzantılı paketi edinmemiz gerekiyor. Dosyayı bilgisayarmızı indirmek yerine wget komutu ile sunucumuza çekeceğiz. <strong>Download</strong> butonuna sağ tıklayıp <strong>Inspect</strong> (incele) dersek <strong>a</strong> elementinin <strong>href</strong> özelliğinde paket linki gözükür.</li></ul><figure class="kg-card kg-image-card"><img src="/content/images/2019/04/Screenshot-from-2019-04-14-18-42-26.png" class="kg-image"></figure><p>wget komutu ile dosyayı sunucuya çekip, paket kurulumunu yapıyoruz.</p><ul><li><code><strong>$ wget https://www.atlassian.com/software/jira/downloads/binary/atlassian-jira-software-8.1.0-x64.bin</strong></code></li><li><code><strong>$ chmod a+x atlassian-jira-software-8.1.0-x64.bin</strong></code></li><li><code><strong>$ sudo ./atlassian-jira-software-8.1.0-x64.bin</strong></code></li></ul><pre><code class="language-wiki">This will install JIRA Software 8.1.0 on your computer.
+OK [o, Enter], Cancel [c]
+**[Enter]**
+
+Choose the appropriate installation or upgrade option.
+Please choose one of the following:
+Express Install (use default settings) [1], Custom Install (recommended for advanced users) [2, Enter], Upgrade an existing JIRA installation [3]
+**2**
+
+Where should JIRA Software be installed?
+[/opt/atlassian/jira]
+**[Enter]**
+
+Default location for JIRA Software data
+[/var/atlassian/application-data/jira]
+**[Enter]**
+
+Configure which ports JIRA Software will use.
+JIRA requires two TCP ports that are not being used by any other
+applications on this machine. The HTTP port is where you will access JIRA
+through your browser. The Control port is used to startup and shutdown JIRA.
+Use default ports (HTTP: 8080, Control: 8005) - Recommended [1, Enter], Set custom value for HTTP and Control ports [2]
+**[Enter]**
+
+JIRA can be run in the background.
+You may choose to run JIRA as a service, which means it will start
+automatically whenever the computer restarts.
+Install JIRA as Service?
+Yes [y, Enter], No [n]
+**[Enter]**
+
+Details on where JIRA Software will be installed and the settings that will be used.
+Installation Directory: /opt/atlassian/jira 
+Home Directory: /var/atlassian/application-data/jira 
+HTTP Port: 8080 
+RMI Port: 8005 
+Install as service: Yes 
+Install [i, Enter], Exit [e]
+
+
+Extracting files ...
+                                                                           
+
+Please wait a few moments while JIRA Software is configured.
+Installation of JIRA Software 8.1.0 is complete
+Start JIRA Software 8.1.0 now?
+Yes [y, Enter], No [n]
+**[Enter]**
+
+
+Please wait a few moments while JIRA Software starts up.
+Launching JIRA Software ...
+Installation of JIRA Software 8.1.0 is complete
+Your installation of JIRA Software 8.1.0 is now ready and can be accessed
+via your browser.
+JIRA Software 8.1.0 can be accessed at http://localhost:8080
+Finishing installation ...
+</code></pre>
+<p>Bundan sonrasını bilgisayarımızın tarayıcısına geçerek devam ettireceğiz. Tarayıcıdan <strong>IP:8080</strong> adresini talep edelim.</p><ul><li><strong>I'll set it up myself</strong> seçeneği seçilir.</li></ul><figure class="kg-card kg-image-card"><img src="/content/images/2019/04/Screenshot-from-2019-04-13-21-59-57.png" class="kg-image"></figure><ul><li>Suncuya kendimiz bir veritabanı kurup bu sayfadan bağlantıyı oluşturabiliriz fakat şuan o topa girmeyip benim için veritabanı kısmını ayarlamasını tercih ediyorum.</li></ul><figure class="kg-card kg-image-card"><img src="/content/images/2019/04/Screenshot-from-2019-04-13-22-01-20.png" class="kg-image"></figure><ul><li>Title bilgisi ve sunucunun IP:8080 bilgilerini dolduruyoruz.</li></ul><figure class="kg-card kg-image-card"><img src="/content/images/2019/04/Screenshot-from-2019-04-13-22-12-19.png" class="kg-image"></figure><ul><li>Jira Software için lisans oluşturma. Ücretsiz deneme için 30 gün süresi bulunmakta.</li></ul><figure class="kg-card kg-image-card"><img src="/content/images/2019/04/Screenshot-from-2019-04-13-22-17-18.png" class="kg-image"></figure><ul><li><strong>generate it Jira trial license</strong> bağlantısı üzerinden sisteme giriş yapılarak deneme sürümü için lisans anahtarı oluşturulur.</li></ul><figure class="kg-card kg-image-card"><img src="/content/images/2019/04/Screenshot-from-2019-04-13-22-17-50.png" class="kg-image"></figure><ul><li>admin kullanıcısı için kullanıcı adı / parola bigileri girilir.</li><li>Ardından dil ve avatar seçenekleri seçilir.</li></ul><figure class="kg-card kg-image-card"><img src="/content/images/2019/04/Screenshot-from-2019-04-13-22-26-57.png" class="kg-image"></figure><ul><li>Bu işlemlerin ardından kurulum adımları tamamlanmış olunur. <strong>Create a new project</strong> ile Jira'yı kurcalamaya başlayabiliriz demektir şimdilik bu kadar.</li></ul><figure class="kg-card kg-image-card"><img src="/content/images/2019/04/Screenshot-from-2019-04-13-22-32-56.png" class="kg-image"></figure>
