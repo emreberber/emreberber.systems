@@ -22,7 +22,7 @@ def get_between(s, first, last):
         return -1
 
 
-source_url  = 'https://emreberber.systems/ubuntu-server-16-04-jira-kurulumu/'
+source_url  = 'https://emreberber.systems/haproxy-ve-keepalived-ile-load-balancing/'
 response    = urllib2.urlopen(source_url)
 page_source = response.read()
 
